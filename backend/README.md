@@ -2,6 +2,8 @@
 
 All backend source, API tests, configuration, and migration tools live here. Application data is stored in MongoDB.
 
+For the hosted site, see [Vercel deployment](VERCEL.md). The root `api/index.js` is a thin entry point for `src/vercel.js`; all backend logic stays in this folder.
+
 ```text
 backend/
   src/

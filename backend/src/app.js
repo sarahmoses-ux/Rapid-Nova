@@ -23,6 +23,17 @@ function email(value) {
 async function body(req) {
   if (!req.headers['content-type']?.startsWith('application/json')) throw new HttpError(415, 'Send JSON data.');
   if (Number(req.headers['content-length']) > MAX_BODY) throw new HttpError(413, 'Upload a PDF under 3 MB.');
+  // Vercel's Node helpers may already have parsed the JSON request stream.
+  if (req.body !== undefined) {
+    let value = req.body;
+    if (Buffer.isBuffer(value)) value = value.toString();
+    if (typeof value === 'string') {
+      try { value = JSON.parse(value); } catch { throw new HttpError(400, 'Invalid request data.'); }
+    }
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new HttpError(400, 'Invalid request data.');
+    if (Buffer.byteLength(JSON.stringify(value)) > MAX_BODY) throw new HttpError(413, 'Upload a PDF under 3 MB.');
+    return value;
+  }
   let size = 0; const chunks = [];
   for await (const chunk of req) {
     size += chunk.length;
@@ -65,7 +76,7 @@ export async function createApp({ mongoUri, databaseName, distDir = defaultDistD
     if (input.active !== undefined && typeof input.active !== 'boolean') throw new HttpError(400, 'Invalid job visibility.');
     return { title: field(input.title, 'Job title'), location: field(input.location, 'Location'), placement, description: field(input.description, 'Description', 10000), active: input.active !== false };
   }
-  const server = createServer(async (req, res) => {
+  const handler = async (req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('X-Frame-Options', 'DENY');
@@ -194,10 +205,11 @@ export async function createApp({ mongoUri, databaseName, distDir = defaultDistD
       if (!res.headersSent) json(error.status || 500, { error: error.status ? error.message : 'Something went wrong. Please try again.' });
       else res.end();
     }
-  });
+  };
+  const server = createServer(handler);
   server.requestTimeout = 30000;
   server.headersTimeout = 15000;
-  return { server, database, close: async () => {
+  return { server, handler, database, close: async () => {
     try { if (server.listening) await new Promise((done, reject) => server.close(error => error ? reject(error) : done())); }
     finally { await database.close(); }
   } };

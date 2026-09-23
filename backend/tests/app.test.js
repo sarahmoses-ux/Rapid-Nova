@@ -7,6 +7,8 @@ import { createApp } from '../src/app.js';
 import { hashPassword } from '../src/auth.js';
 import { startTestMongo, testDatabaseName, dropTestDatabase } from './mongo.js';
 import { migrateSQLite } from '../src/migration.js';
+import { createServer } from 'node:http';
+import { createVercelHandler } from '../src/vercel.js';
 
 let mongo;
 before(async () => { mongo = await startTestMongo(); });
@@ -135,4 +137,36 @@ test('SQLite migration preserves CVs and can be repeated without overwriting Mon
 
 test('backend refuses to start without a MongoDB connection string', async () => {
   await assert.rejects(createApp({ mongoUri: '' }), /Set MONGODB_URI/);
+});
+
+test('Vercel adapter routes API calls, accepts parsed bodies, and reuses the application', async t => {
+  const client = await start(t, { production: true, publicOrigin: 'https://rapidnova.example' });
+  let initialisations = 0;
+  const handler = createVercelHandler({ env: { MONGODB_URI: 'test-uri', PUBLIC_ORIGIN: 'https://rapidnova.example', ADMIN_EMAIL: admin.email, ADMIN_PASSWORD_HASH: admin.passwordHash }, createApplication: async options => { initialisations++; assert.equal(options.production, true); return client.app(); } });
+  const proxy = createServer(async (req, res) => {
+    // Simulate Vercel's JSON body helpers consuming the stream before invocation.
+    if (req.method === 'POST') { const chunks = []; for await (const chunk of req) chunks.push(chunk); req.body = JSON.parse(Buffer.concat(chunks).toString()); }
+    await handler(req, res);
+  });
+  await new Promise(done => proxy.listen(0, '127.0.0.1', done));
+  t.after(() => new Promise(done => proxy.close(done)));
+  const base = `http://127.0.0.1:${proxy.address().port}/api/index?__route=`;
+  const health = await fetch(base + 'health'); assert.equal(health.status, 200); assert.deepEqual(await health.json(), { ok: true });
+  const submitted = await fetch(base + 'applications', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://rapidnova.example' }, body: JSON.stringify(application) });
+  assert.equal(submitted.status, 201);
+  const login = await fetch(base + 'admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://rapidnova.example' }, body: JSON.stringify({ email: admin.email, password }) });
+  assert.equal(login.status, 200); assert.match(login.headers.get('set-cookie'), /; Secure/);
+  const cookie = login.headers.get('set-cookie').split(';')[0];
+  const inbox = await fetch(base + 'admin/submissions', { headers: { Cookie: cookie } }); assert.equal((await inbox.json()).total, 1);
+  const invalid = await fetch(base + '../data'); assert.equal(invalid.status, 400);
+  assert.equal(initialisations, 1);
+});
+
+test('Vercel adapter fails clearly without deployment configuration', async t => {
+  const proxy = createServer(createVercelHandler({ env: {} }));
+  await new Promise(done => proxy.listen(0, '127.0.0.1', done));
+  t.after(() => new Promise(done => proxy.close(done)));
+  const response = await fetch(`http://127.0.0.1:${proxy.address().port}/api/health`);
+  assert.equal(response.status, 503);
+  assert.match((await response.json()).error, /not configured/);
 });

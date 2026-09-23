@@ -33,6 +33,8 @@ Applications are saved in the dashboard. Email notifications, candidate accounts
 
 ## Deployment
 
+For Vercel, use the repository root and follow [the Vercel setup guide](backend/VERCEL.md). The configuration serves `/admin` through React and `/api/*` through a Node function. Set MongoDB and admin credentials in Vercel's environment settings; local secrets are not deployed.
+
 Deploy a Node server connected to MongoDB; the server serves both `dist` and `/api`. A static-only host cannot run this backend. Copy `backend/.env.example` to `backend/.env` for local settings, or use the host's environment settings. Never commit real credentials.
 
 1. Set `NODE_ENV=production`, `HOST=0.0.0.0`, `PORT` as required by the host, and `PUBLIC_ORIGIN` to the exact public HTTPS origin.
