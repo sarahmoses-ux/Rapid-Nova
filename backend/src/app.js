@@ -194,9 +194,11 @@ export async function createApp({ mongoUri, databaseName, distDir = defaultDistD
       const root = resolve(distDir);
       const requested = resolve(root, `.${decodeURIComponent(path)}`);
       if (requested !== root && !requested.startsWith(root + sep)) throw new HttpError(404, 'Not found.');
-      const file = path === '/' || path === '/admin' || path === '/admin/' ? resolve(root, 'index.html') : requested;
+      const pageRoutes = ['/', '/admin', '/careers', '/international-nursing', '/staffing', '/about', '/resources', '/apply', '/contact'];
+      const pagePath = path.replace(/\/$/, '') || '/';
+      const file = pageRoutes.includes(pagePath) ? resolve(root, 'index.html') : requested;
       if (!existsSync(file) || !statSync(file).isFile()) throw new HttpError(404, 'Page not found. Build the website before serving it.');
-      const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2' };
+      const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2' };
       res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'");
       res.writeHead(200, { 'Content-Type': types[extname(file)] || 'application/octet-stream', 'Cache-Control': extname(file) === '.html' ? 'no-cache' : 'public, max-age=3600' });
       return res.end(req.method === 'HEAD' ? undefined : readFileSync(file));

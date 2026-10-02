@@ -23,6 +23,9 @@ For frontend development, run `npm run dev:api` and `npm run dev` in separate te
 
 ## Working features
 
+- Separate public pages at `/careers`, `/international-nursing`, `/staffing`, `/about`, `/resources`, `/apply`, and `/contact`, with browser history and direct-link support. The homepage introduces the company and career paths.
+- Page transitions, scroll reveals, hover motion, and animated international nursing visuals. Animations are disabled for visitors who prefer reduced motion.
+
 - Candidate applications with a required PDF CV (maximum 3 MB), contact details, desired role, and location.
 - Facility staffing requests and general contact enquiries.
 - Database-backed vacancies, public search, and applications linked to a vacancy.

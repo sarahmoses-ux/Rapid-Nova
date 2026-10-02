@@ -30,7 +30,7 @@ test('publish a job, apply with a CV, submit enquiries, and review in admin', as
   await page.getByLabel('Description and requirements').fill('A test vacancy for a qualified registered nurse.');
   await page.getByRole('button', { name: 'Save Vacancy' }).click();
   await expect(page.getByRole('heading', { name: 'Travel Registered Nurse' })).toBeVisible();
-  await page.goto(base);
+  await page.goto(`${base}/careers`);
   await expect(page.getByRole('heading', { name: 'Travel Registered Nurse' })).toBeVisible();
   await page.getByRole('link', { name: 'Apply for this role' }).click();
   const application = page.locator('#apply');
@@ -42,6 +42,7 @@ test('publish a job, apply with a CV, submit enquiries, and review in admin', as
   await application.getByRole('checkbox').check();
   await application.getByRole('button', { name: 'Submit Application' }).click();
   await expect(application.getByText('Thank you. Your submission has been received.')).toBeVisible();
+  await page.goto(`${base}/contact`);
   const contact = page.locator('#contact');
   await contact.getByLabel('Your name').fill('Browser Facility');
   await contact.getByLabel('Email address').fill('facility@example.test');
@@ -106,4 +107,112 @@ test('mobile layout fits the screen and navigation reaches application form', as
   await expect(page.getByRole('heading', { name: 'Apply with Rapid Nova' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: 'test-results/mobile-application.png' });
+});
+
+test('international career information, accessible navigation, and responsive layouts', async ({ page }) => {
+  await page.goto(base);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Your calling.Your next chapter.A world of possibility.');
+  await page.locator('.rn-menu').getByRole('link', { name: 'International nursing', exact: true }).click();
+  await expect(page).toHaveURL(/\/international-nursing$/);
+  await expect(page.locator('#international').getByRole('link', { name: 'Start your international enquiry' })).toBeVisible();
+  const question = page.locator('#faq details').filter({ hasText: 'Are visa sponsorship and relocation included?' });
+  await question.locator('summary').click();
+  await expect(question.locator('p')).toBeVisible();
+  await expect(question.locator('p')).toContainText('depend on the employer');
+  await question.locator('summary').click();
+  await expect(question.locator('p')).toBeHidden();
+  await page.goto(base);
+  for (const width of [320, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 960 });
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    if (width === 390 || width === 1440) await page.screenshot({ path: `test-results/refined-home-${width}.png`, fullPage: true });
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const menu = page.getByRole('button', { name: 'Toggle menu' });
+  await menu.click();
+  await expect(menu).toHaveAttribute('aria-expanded', 'true');
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveAttribute('aria-expanded', 'false');
+  await expect(menu).toBeFocused();
+  await page.locator('.rn-career-card').filter({ hasText: 'Registered nurses' }).click();
+  await expect(page.getByRole('textbox', { name: 'Healthcare role or specialty' })).toHaveValue('Registered Nurse');
+  await expect(page.getByRole('textbox', { name: 'Healthcare role or specialty' })).toBeFocused();
+});
+
+test('distinct pages support direct visits, refresh, and browser history', async ({ page }) => {
+  for (const path of ['/careers', '/international-nursing', '/staffing', '/about', '/resources', '/apply', '/contact']) {
+    const response = await page.goto(`${base}${path}`);
+    expect(response.status()).toBe(200);
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await page.reload();
+    await expect(page).toHaveURL(`${base}${path}`);
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    expect(await page.locator('main #apply').count()).toBe(path === '/apply' ? 1 : 0);
+    expect(await page.locator('main #contact').count()).toBe(path === '/contact' ? 1 : 0);
+  }
+  await page.goto(base);
+  await page.locator('.rn-menu').getByRole('link', { name: 'For professionals' }).click();
+  await expect(page).toHaveURL(`${base}/careers`);
+  await expect(page.locator('.rn-menu a[aria-current="page"]')).toHaveText('For professionals');
+  await page.goBack();
+  await expect(page).toHaveURL(`${base}/`);
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Your calling.');
+  await page.goto(`${base}/staffing#pricing`);
+  await expect(page.locator('#pricing')).toBeInViewport();
+});
+
+test('motion animates normally and stays visible with reduced motion', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto(base);
+  await expect(page.locator('.rn-photo-card')).toHaveCSS('animation-name', 'rn-float');
+  await page.locator('#about').scrollIntoViewIfNeeded();
+  await expect(page.locator('#about')).toHaveClass(/rn-visible/);
+  await expect(page.locator('#about')).toHaveCSS('opacity', '1');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(page.locator('.rn-photo-card')).toHaveCSS('animation-name', 'none');
+  await page.goto(`${base}/international-nursing`);
+  await expect(page.locator('.rn-orbit-one')).toHaveCSS('animation-name', 'none');
+  await expect(page.locator('#international')).toHaveCSS('opacity', '1');
+});
+
+test('photo-led career paths, placement tabs, specialty searches, and guides work', async ({ page }) => {
+  test.setTimeout(60000);
+  await page.goto(`${base}/careers`);
+  await expect(page.locator('.rn-photo-path')).toHaveCount(3);
+  const tab = page.getByRole('tab', { name: 'Local & per diem' });
+  await tab.click();
+  await expect(tab).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tabpanel')).toContainText('Your skills. Your community.');
+  await tab.press('ArrowRight');
+  await expect(page.getByRole('tab', { name: 'Permanent roles' })).toBeFocused();
+  await expect(page.getByRole('tabpanel')).toContainText('Put down roots. Keep growing.');
+  const searched = page.waitForResponse(response => new URL(response.url()).pathname === '/api/jobs' && new URL(response.url()).searchParams.get('q') === 'Intensive Care');
+  await page.locator('.rn-specialty-links').getByRole('link', { name: 'Intensive Care' }).click();
+  expect((await searched).status()).toBe(200);
+  await expect(page.getByRole('textbox', { name: 'Healthcare role or specialty' })).toHaveValue('Intensive Care');
+  await page.goto(`${base}/resources`);
+  const guide = page.locator('#cv-guide');
+  await guide.locator('summary').click();
+  await expect(guide.locator('ul')).toBeVisible();
+  await expect(guide.locator('ul')).toContainText('Save a clear PDF under 3 MB');
+  for (const path of ['/careers', '/international-nursing', '/resources']) {
+    await page.goto(`${base}${path}`);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.evaluate(async () => {
+      document.querySelectorAll('main img').forEach(img => { img.loading = 'eager'; });
+      await Promise.all([...document.querySelectorAll('main img')].map(img => img.decode()));
+    });
+    expect(await page.locator('main img').evaluateAll(images => images.every(img => img.naturalWidth > 0))).toBe(true);
+    await page.screenshot({ path: `test-results/photo-${path.slice(1)}-mobile.png`, fullPage: true });
+  }
+  await page.goto(`${base}/careers`);
+  await page.setViewportSize({ width: 1440, height: 960 });
+  const imageResponse = await page.request.get(await page.locator('.rn-heading-photo img').evaluate(img => img.src));
+  expect(imageResponse.headers()['content-type']).toBe('image/jpeg');
+  await page.screenshot({ path: 'test-results/photo-careers-hero.png' });
+  await page.screenshot({ path: 'test-results/photo-careers-desktop.png', fullPage: true });
 });
