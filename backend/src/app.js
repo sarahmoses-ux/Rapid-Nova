@@ -117,8 +117,8 @@ export async function createApp({ mongoUri, databaseName, distDir = defaultDistD
               if (!job) throw new HttpError(400, 'This vacancy is no longer available. Submit a general application instead.');
               data.jobId = job.id; data.jobTitle = job.title;
             }
-            if (!input.cv || typeof input.cv.base64 !== 'string' || !/^[A-Za-z0-9+/]+={0,2}$/.test(input.cv.base64)) throw new HttpError(400, 'Attach your CV as a PDF under 3 MB.');
-            cvName = field(input.cv.name, 'CV filename', 180);
+            if (!input.cv || typeof input.cv.base64 !== 'string' || !/^[A-Za-z0-9+/]+={0,2}$/.test(input.cv.base64)) throw new HttpError(400, 'Attach your resume as a PDF under 3 MB.');
+            cvName = field(input.cv.name, 'resume filename', 180);
             cv = Buffer.from(input.cv.base64, 'base64');
             if (cv.length > MAX_CV) throw new HttpError(413, 'Upload a PDF under 3 MB.');
             if (!/\.pdf$/i.test(cvName) || cv.length < 8 || cv.subarray(0, 5).toString() !== '%PDF-' || !cv.subarray(-1024).includes(Buffer.from('%%EOF'))) throw new HttpError(400, 'Attach a valid PDF document.');
@@ -163,8 +163,8 @@ export async function createApp({ mongoUri, databaseName, distDir = defaultDistD
           const cvMatch = /^\/api\/admin\/submissions\/([a-f0-9-]{36})\/cv$/.exec(path);
           if (req.method === 'GET' && cvMatch) {
             const cv = await database.cv(cvMatch[1]);
-            if (!cv) throw new HttpError(404, 'CV not found.');
-            res.writeHead(200, { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="cv-${cvMatch[1]}.pdf"`, 'Content-Security-Policy': "sandbox; default-src 'none'" });
+            if (!cv) throw new HttpError(404, 'resume not found.');
+            res.writeHead(200, { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="resume-${cvMatch[1]}.pdf"`, 'Content-Security-Policy': "sandbox; default-src 'none'" });
             return res.end(cv);
           }
           const submissionMatch = /^\/api\/admin\/submissions\/([a-f0-9-]{36})$/.exec(path);
@@ -194,7 +194,7 @@ export async function createApp({ mongoUri, databaseName, distDir = defaultDistD
       const root = resolve(distDir);
       const requested = resolve(root, `.${decodeURIComponent(path)}`);
       if (requested !== root && !requested.startsWith(root + sep)) throw new HttpError(404, 'Not found.');
-      const pageRoutes = ['/', '/admin', '/careers', '/international-nursing', '/staffing', '/about', '/resources', '/apply', '/contact'];
+      const pageRoutes = ['/', '/admin', '/careers', '/international-nursing', '/international-nursing/direct-hire', '/staffing', '/about', '/resources', '/apply', '/contact'];
       const pagePath = path.replace(/\/$/, '') || '/';
       const file = pageRoutes.includes(pagePath) ? resolve(root, 'index.html') : requested;
       if (!existsSync(file) || !statSync(file).isFile()) throw new HttpError(404, 'Page not found. Build the website before serving it.');

@@ -26,13 +26,13 @@ For frontend development, run `npm run dev:api` and `npm run dev` in separate te
 - Separate public pages at `/careers`, `/international-nursing`, `/staffing`, `/about`, `/resources`, `/apply`, and `/contact`, with browser history and direct-link support. The homepage introduces the company and career paths.
 - Page transitions, scroll reveals, hover motion, and animated international nursing visuals. Animations are disabled for visitors who prefer reduced motion.
 
-- Candidate applications with a required PDF CV (maximum 3 MB), contact details, desired role, and location.
+- Candidate applications with a required PDF resume (maximum 3 MB), contact details, desired role, and location.
 - Facility staffing requests and general contact enquiries.
 - Database-backed vacancies, public search, and applications linked to a vacancy.
-- Team dashboard to review submissions, download CVs, save internal notes and statuses, and create, edit, publish, or unpublish vacancies.
-- Password hashing, eight-hour HttpOnly sessions, server-side validation, submission/login rate limits, origin checks, and authenticated CV downloads.
+- Team dashboard to review submissions, download resumes, save internal notes and statuses, and create, edit, publish, or unpublish vacancies.
+- Password hashing, eight-hour HttpOnly sessions, server-side validation, submission/login rate limits, origin checks, and authenticated resume downloads.
 
-Applications are saved in the dashboard. Email notifications, candidate accounts, password-reset emails, and external applicant-tracking integrations are not implemented. CV validation checks size, extension, and PDF markers; it is not a malware scanner. No sample vacancies or applications are inserted into the real database.
+Applications are saved in the dashboard. Email notifications, candidate accounts, password-reset emails, and external applicant-tracking integrations are not implemented. resume validation checks size, extension, and PDF markers; it is not a malware scanner. No sample vacancies or applications are inserted into the real database.
 
 ## Deployment
 
@@ -43,8 +43,8 @@ Deploy a Node server connected to MongoDB; the server serves both `dist` and `/a
 1. Set `NODE_ENV=production`, `HOST=0.0.0.0`, `PORT` as required by the host, and `PUBLIC_ORIGIN` to the exact public HTTPS origin.
 2. Set `MONGODB_URI` and `MONGODB_DATABASE`. Configure database credentials and network access for the backend host. Supply `ADMIN_EMAIL` and `ADMIN_PASSWORD_HASH` through environment settings, or preserve `DATA_DIR` for the local admin credential file.
 3. Run `npm ci`, `npm ci --prefix backend --omit=dev`, and `npm run build`; start with `npm start` behind HTTPS. `/api/health` checks MongoDB connectivity.
-4. Configure MongoDB backups and restrict database access. Application records, CVs, and sessions live in MongoDB, not in the backend filesystem.
-5. Verify a real application, staffing request, admin login, CV download, and restart persistence on the deployed site.
+4. Configure MongoDB backups and restrict database access. Application records, resumes, and sessions live in MongoDB, not in the backend filesystem.
+5. Verify a real application, staffing request, admin login, resume download, and restart persistence on the deployed site.
 
 The in-process limiter deliberately uses the socket address, not untrusted forwarding headers. Behind a reverse proxy, visitors share its limit (15 submissions and 10 login attempts per 15 minutes). Configure trusted proxy/edge rate limiting before a wider rollout. MongoDB shares sessions and records across instances; rate counters are per-process and reset on restart. Use shared rate limiting before adding multiple backend instances.
 
@@ -54,6 +54,6 @@ The in-process limiter deliberately uses the socket address, not untrusted forwa
 
 Production frontend: `src/`. Backend: `backend/` (source, API tests, environment settings, and runtime data). See `backend/README.md` for standalone backend commands. The original static design in `Rapid-Nova-Design/` is a reference only and does not run the API workflows.
 
-Existing SQLite files are preserved. After configuring MongoDB, run `npm --prefix backend run migrate:sqlite` to import the previous vacancies and submissions, including CVs. Import is repeatable and does not overwrite existing MongoDB records. Sessions are not migrated.
+Existing SQLite files are preserved. After configuring MongoDB, run `npm --prefix backend run migrate:sqlite` to import the previous vacancies and submissions, including resumes. Import is repeatable and does not overwrite existing MongoDB records. Sessions are not migrated.
 
 MongoDB driver reference: https://www.mongodb.com/docs/drivers/node/current/connect/

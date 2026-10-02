@@ -1,7 +1,7 @@
 import { MongoClient, Binary } from 'mongodb';
 
-// CVs are capped at 3 MB, below MongoDB's 16 MB document limit. Keeping
-// the CV with its application makes submission writes atomic.
+// resumes are capped at 3 MB, below MongoDB's 16 MB document limit. Keeping
+// the resume with its application makes submission writes atomic.
 export async function connectDatabase({ uri = process.env.MONGODB_URI, databaseName = process.env.MONGODB_DATABASE || 'rapid_nova' } = {}) {
   if (!uri) throw new Error('Set MONGODB_URI in backend/.env before starting the backend.');
   if (!/^[a-zA-Z0-9_-]{1,63}$/.test(databaseName)) throw new Error('MONGODB_DATABASE must contain only letters, numbers, underscores, or hyphens.');

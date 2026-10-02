@@ -37,7 +37,7 @@ async function start(t, options = {}) {
   };
 }
 
-test('application, private CV, admin review, persistence, and logout work end to end', async t => {
+test('application, private resume, admin review, persistence, and logout work end to end', async t => {
   const client = await start(t);
   const response = await client.request('/api/applications', 'POST', application);
   assert.equal(response.status, 201); const { id } = await response.json();
@@ -78,7 +78,7 @@ test('facility and general enquiries are stored with validation', async t => {
   await client.login(); const inbox = await (await client.request('/api/admin/submissions')).json(); assert.equal(inbox.total, 2); assert.equal(inbox.submissions.find(item => item.kind === 'staffing').data.headcount, 3);
 });
 
-test('reject invalid CVs, missing consent, malformed data, and cross-origin writes', async t => {
+test('reject invalid resumes, missing consent, malformed data, and cross-origin writes', async t => {
   const client = await start(t);
   assert.equal((await client.request('/api/applications', 'POST', { ...application, consent: false })).status, 400);
   assert.equal((await client.request('/api/applications', 'POST', { ...application, cv: { name: 'fake.pdf', base64: Buffer.from('not a PDF').toString('base64') } })).status, 400);
@@ -113,7 +113,7 @@ test('expired sessions are rejected even before MongoDB TTL cleanup', async t =>
   assert.ok(indexes.some(index => index.expireAfterSeconds === 0 && index.key.expires === 1));
 });
 
-test('SQLite migration preserves CVs and can be repeated without overwriting MongoDB changes', async t => {
+test('SQLite migration preserves resumes and can be repeated without overwriting MongoDB changes', async t => {
   const { DatabaseSync } = await import('node:sqlite');
   const directory = mkdtempSync(join(tmpdir(), 'rapid-nova-migration-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));

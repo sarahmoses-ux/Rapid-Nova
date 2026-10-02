@@ -17,7 +17,7 @@ test.beforeAll(async () => {
 });
 test.afterAll(async () => { await app?.close(); await mongo?.stop(); if (directory) rmSync(directory, { recursive: true, force: true }); });
 
-test('publish a job, apply with a CV, submit enquiries, and review in admin', async ({ page }) => {
+test('publish a job, apply with a resume, submit enquiries, and review in admin', async ({ page }) => {
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   await page.goto(`${base}/admin`);
   await page.getByLabel('Email address').fill('team@example.test');
@@ -38,7 +38,7 @@ test('publish a job, apply with a CV, submit enquiries, and review in admin', as
   await application.getByLabel('Full name').fill('Browser Candidate');
   await application.getByLabel('Email address').fill('candidate@example.test');
   await application.getByLabel('Preferred location').fill('Test City');
-  await application.getByLabel('Your CV').setInputFiles({ name: 'candidate.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF') });
+  await application.getByLabel('Your resume').setInputFiles({ name: 'candidate.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF') });
   await application.getByRole('checkbox').check();
   await application.getByRole('button', { name: 'Submit Application' }).click();
   await expect(application.getByText('Thank you. Your submission has been received.')).toBeVisible();
@@ -69,8 +69,8 @@ test('publish a job, apply with a CV, submit enquiries, and review in admin', as
   await candidate.getByLabel('Internal notes').fill('Ready for a call.');
   await candidate.getByRole('button', { name: 'Save Changes' }).click();
   await expect(candidate.getByText('Changes saved.')).toBeVisible();
-  const downloadPromise = page.waitForEvent('download'); await candidate.getByRole('link', { name: 'Download CV (PDF)' }).click();
-  expect((await downloadPromise).suggestedFilename()).toMatch(/^cv-.*\.pdf$/);
+  const downloadPromise = page.waitForEvent('download'); await candidate.getByRole('link', { name: 'Download resume (PDF)' }).click();
+  expect((await downloadPromise).suggestedFilename()).toMatch(/^resume-.*\.pdf$/);
   await page.reload(); await candidate.locator('summary').click(); await expect(candidate.getByLabel('Status')).toHaveValue('contacted'); await expect(candidate.getByLabel('Internal notes')).toHaveValue('Ready for a call.');
   await page.getByLabel('Search submissions on this page').fill('no-matching-person');
   await expect(page.getByRole('heading', { name: 'No matching submissions' })).toBeVisible();
@@ -194,7 +194,7 @@ test('photo-led career paths, placement tabs, specialty searches, and guides wor
   expect((await searched).status()).toBe(200);
   await expect(page.getByRole('textbox', { name: 'Healthcare role or specialty' })).toHaveValue('Intensive Care');
   await page.goto(`${base}/resources`);
-  const guide = page.locator('#cv-guide');
+  const guide = page.locator('#resume-guide');
   await guide.locator('summary').click();
   await expect(guide.locator('ul')).toBeVisible();
   await expect(guide.locator('ul')).toContainText('Save a clear PDF under 3 MB');
@@ -215,4 +215,44 @@ test('photo-led career paths, placement tabs, specialty searches, and guides wor
   expect(imageResponse.headers()['content-type']).toBe('image/jpeg');
   await page.screenshot({ path: 'test-results/photo-careers-hero.png' });
   await page.screenshot({ path: 'test-results/photo-careers-desktop.png', fullPage: true });
+});
+
+test('international direct-hire path opens and carries career interest into the application', async ({ page }) => {
+  await page.goto(`${base}/international-nursing`);
+  await page.getByRole('link', { name: 'Explore the direct-hire path' }).click();
+  await expect(page).toHaveURL(`${base}/international-nursing/direct-hire`);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('A career abroad. A place to grow.');
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Your direct-hire journey.' })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const question = page.locator('.rn-direct-hire-faq details').filter({ hasText: 'Who employs me in a direct-hire role?' });
+  await question.locator('summary').click();
+  await expect(question.locator('p')).toBeVisible();
+  await page.getByRole('link', { name: 'Enquire about international direct hire' }).click();
+  await expect(page).toHaveURL(/\/apply\?path=international-direct-hire$/);
+  await expect(page.getByText('Career interest: International direct hire')).toBeVisible();
+  await expect(page.locator('#apply textarea[name="message"]')).toHaveValue(/international direct-hire/);
+  await expect(page.getByLabel('Your resume')).toBeVisible();
+});
+
+test('every photograph has a unique placement across all public pages', async ({ page }) => {
+  test.setTimeout(60000);
+  const seen = new Map();
+  for (const path of ['/', '/careers', '/international-nursing', '/international-nursing/direct-hire', '/staffing', '/about', '/resources', '/apply', '/contact']) {
+    await page.goto(`${base}${path}`);
+    const sources = await page.locator('main img').evaluateAll(images => images.map(img => img.src));
+    expect(new Set(sources).size, `Repeated photograph on ${path}`).toBe(sources.length);
+    for (const source of sources) {
+      expect(seen.has(source), `Photograph reused on ${path}; first seen on ${seen.get(source)}`).toBe(false);
+      seen.set(source, path);
+    }
+    await page.evaluate(async () => {
+      document.querySelectorAll('main img').forEach(img => { img.loading = 'eager'; });
+      await Promise.all([...document.querySelectorAll('main img')].map(img => img.decode()));
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+  expect(seen.size).toBe(15);
 });

@@ -21,7 +21,7 @@ Deploy the latest Git commit or redeploy after saving environment variables. The
 1. `/admin` displays Team Sign In, including after refresh.
 2. `/api/health` returns `{"ok":true}`.
 3. Sign in with your existing admin email and password.
-4. Verify a vacancy and a test application, then review and download its CV.
+4. Verify a vacancy and a test application, then review and download its resume.
 
 An HTML 404 on `/admin` points to an old deployment or incorrect project root. A JSON 503 from `/api/health` points to missing environment settings or a MongoDB connection problem. No `npm start` command is needed on Vercel; it invokes the API function for requests.
 

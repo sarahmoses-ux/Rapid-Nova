@@ -43,7 +43,7 @@ Use `npm run dev` for automatic restart during development and `npm test` for th
 
 The server runs at `http://localhost:3001` by default. It serves the frontend build from `../dist`; build that first with `npm run build` from the project root. Admin sign-in is at `/admin`.
 
-MongoDB stores `jobs`, `submissions`, and `sessions`. PDF CVs (limited to 3 MB) are binary values stored atomically with applications and excluded from inbox queries. Downloads require admin authentication. Sessions have a TTL index plus an explicit expiry check during authentication.
+MongoDB stores `jobs`, `submissions`, and `sessions`. PDF resumes (limited to 3 MB) are binary values stored atomically with applications and excluded from inbox queries. Downloads require admin authentication. Sessions have a TTL index plus an explicit expiry check during authentication.
 
 The server connects to MongoDB and creates indexes before listening. It stops with a configuration message if the URI is missing or connection fails; it never silently falls back to SQLite. `/api/health` checks the database and returns 503 if unavailable.
 
@@ -57,6 +57,6 @@ npm run migrate:sqlite
 npm run migrate:sqlite -- path/to/rapid-nova.sqlite
 ```
 
-Stop the previous SQLite backend before importing. The importer opens SQLite read-only, preserves record IDs and CV bytes, skips existing MongoDB records, and can resume after interruption by being run again. It leaves the source database intact. Existing sessions are not imported; sign in again.
+Stop the previous SQLite backend before importing. The importer opens SQLite read-only, preserves record IDs and resume bytes, skips existing MongoDB records, and can resume after interruption by being run again. It leaves the source database intact. Existing sessions are not imported; sign in again.
 
 Root commands (`npm start`, `npm run dev:api`, `npm run admin:setup`, and `npm test`) delegate here. Browser tests remain in the root `tests/` folder because they exercise both the frontend and backend. See the root README for deployment settings and production limitations.
